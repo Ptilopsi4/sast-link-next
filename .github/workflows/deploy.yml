@@ -13,9 +13,7 @@ name: Docker Deploy
 # ============================================================================
 
 on:
-  push:
-    branches:
-      - master
+  workflow_call:
 
 env:
   SERVICE_NAME: sast-link-next

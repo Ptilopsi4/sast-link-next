@@ -9,11 +9,11 @@ name: CI/CD Pipeline
 # Workflow Structure:
 # ├── quality.yml     - Code quality & security checks (ESLint, TypeScript, audit)
 # ├── test.yml        - Test suite with coverage & Next.js build
-# ├── deploy.yml      - Deployment workflows (optional, disabled by default)
+# ├── deploy.yml      - Docker deploy (master push only, requires secrets)
 # └── release.yml     - GitHub release creation (triggered by version tags)
 #
-# This workflow works OUT-OF-THE-BOX without requiring any secrets.
-# See CI_CD.md for detailed setup instructions for optional features.
+# Quality and test run on every push/PR. Deploy runs after both pass,
+# but only on push to master. See CI_CD.md for setup instructions.
 # ============================================================================
 
 on:
@@ -40,3 +40,11 @@ jobs:
   test:
     name: Test
     uses: ./.github/workflows/test.yml
+
+  # Step 3: Deploy (master push only)
+  deploy:
+    name: Deploy
+    needs: [quality, test]
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

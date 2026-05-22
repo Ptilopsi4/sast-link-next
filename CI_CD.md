@@ -6,10 +6,10 @@ This document summarizes the current GitHub Actions setup for `sast-link-next`.
 
 | File | Purpose |
 | --- | --- |
-| `.github/workflows/ci.yml` | Main orchestrator for push / PR CI |
+| `.github/workflows/ci.yml` | Main orchestrator for push / PR CI and deploy |
 | `.github/workflows/quality.yml` | Lint, type-check, audit, dependency freshness |
 | `.github/workflows/test.yml` | Jest coverage run, test/coverage artifact upload, Next.js build |
-| `.github/workflows/deploy.yml` | Deployment scaffold (disabled by default) |
+| `.github/workflows/deploy.yml` | Docker build, SCP transfer, and server deployment |
 | `.github/workflows/release.yml` | Tag-triggered release pipeline that drafts a GitHub Release |
 
 ## Triggers
@@ -27,6 +27,7 @@ Then calls:
 
 1. `quality.yml`
 2. `test.yml`
+3. `deploy.yml` (only on push to `master`, after quality and test pass)
 
 ### `quality.yml`
 
@@ -37,9 +38,9 @@ Runs on:
 
 Checks:
 
-1. `pnpm lint`
-2. `pnpm exec tsc --noEmit`
-3. `pnpm audit --audit-level=moderate`
+1. `pnpm lint` (blocking)
+2. `pnpm exec tsc --noEmit` (blocking)
+3. `pnpm audit --audit-level=moderate` (blocking)
 4. `pnpm outdated` (non-blocking)
 
 ### `test.yml`
@@ -53,15 +54,22 @@ Main steps:
 
 1. setup pnpm + Node.js
 2. `pnpm install --frozen-lockfile`
-3. `pnpm test:coverage`
+3. `pnpm test:coverage` (coverage thresholds enforced via jest.config.ts)
 4. upload `coverage/junit.xml` as `test-results`
 5. upload `coverage/` as `coverage-report`
-6. `pnpm build`
-7. upload `out/` as `nextjs-build`
+6. publish test results as PR comment
+7. `pnpm build`
+8. upload `out/` as `nextjs-build`
 
 ### `deploy.yml`
 
-Deployment scaffold. Keep disabled until deployment target, credentials, and rollout strategy are confirmed.
+Called by `ci.yml` on push to `master`. Builds the production Docker image, transfers it to the server, and executes the deployment with health-check verification and automatic rollback on failure.
+
+Required secrets:
+
+- `SERVER_HOST`
+- `SERVER_USER`
+- `SSH_PRIVATE_KEY`
 
 ### `release.yml`
 
@@ -88,15 +96,22 @@ Current build output flow:
 Current workflows use:
 
 - pnpm cache via `actions/setup-node`
-- Next.js cache in `.next/cache`
 - test artifacts (`coverage/junit.xml`, `coverage/`)
 - static build artifact (`out/`)
 
-## Optional Secrets
+## Coverage
 
-By default, current workflows run without custom secrets.
+- Jest coverage thresholds are enforced in `jest.config.ts` (branches: 60%, functions: 60%, lines: 70%, statements: 70%)
+- Results are published as a step summary using `coverage-summary.json`
+- JUnit XML via `jest-junit` reporter for PR test result integration
 
-If you later enable deployment or third-party integrations, document required secrets in this file and in the target workflow comments.
+## Required Secrets
+
+| Secret | Used By |
+| --- | --- |
+| `SERVER_HOST` | `deploy.yml` |
+| `SERVER_USER` | `deploy.yml` |
+| `SSH_PRIVATE_KEY` | `deploy.yml` |
 
 ## Maintenance Checklist
 
