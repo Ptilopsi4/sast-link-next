@@ -57,8 +57,7 @@ const config: Config = {
     "cobertura",
   ],
 
-  // Coverage thresholds - enforce minimum coverage in CI
-  // Uncomment to enable strict coverage requirements
+  // Coverage thresholds - minimum coverage enforced in CI
   coverageThreshold: {
     global: {
       branches: 60,

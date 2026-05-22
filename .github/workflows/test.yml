@@ -28,10 +28,6 @@ jobs:
       pull-requests: write
       checks: write
 
-    strategy:
-      matrix:
-        node-version: [20.x]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -43,20 +39,11 @@ jobs:
         with:
           version: 10
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Node.js 20.x
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20.x
           cache: "pnpm"
-
-      - name: Cache Next.js build
-        uses: actions/cache@v4
-        with:
-          path: |
-            .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -70,7 +57,7 @@ jobs:
           echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -n 10 coverage/lcov-report/index.html | grep -oP '(?<=<div class="pad1">).*?(?=</div>)' | head -1 || echo "Coverage report generated" >> $GITHUB_STEP_SUMMARY
+          node -e "try { const c = require('./coverage/coverage-summary.json').total; console.log('Lines:     ' + String(c.lines.pct).padStart(5) + '%'); console.log('Statements:' + String(c.statements.pct).padStart(5) + '%'); console.log('Branches:  ' + String(c.branches.pct).padStart(5) + '%'); console.log('Functions: ' + String(c.functions.pct).padStart(5) + '%'); } catch(e) { console.log('Coverage summary not available'); }" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       # Optional: Upload coverage to Codecov (requires CODECOV_TOKEN secret)
